@@ -1,0 +1,140 @@
+import { convertToExcalidrawElements } from '@excalidraw/excalidraw';
+import type { SceneElement } from '@syncspace/shared';
+import type { Template } from '../../landing/types';
+export function makeTemplate(template: Template): SceneElement[] {
+  if (template === 'blank') return [];
+  const skeletons =
+    template === 'brainstorm'
+      ? [
+          {
+            type: 'text' as const,
+            x: 160,
+            y: 110,
+            text: 'What if we…',
+            fontSize: 36,
+            strokeColor: '#26312f',
+          },
+          {
+            type: 'rectangle' as const,
+            x: 160,
+            y: 210,
+            width: 220,
+            height: 200,
+            backgroundColor: '#fff3bd',
+            fillStyle: 'solid' as const,
+            strokeColor: '#d0ae46',
+            label: { text: 'Wild ideas', fontSize: 24 },
+          },
+          {
+            type: 'rectangle' as const,
+            x: 430,
+            y: 210,
+            width: 220,
+            height: 200,
+            backgroundColor: '#d5ece5',
+            fillStyle: 'solid' as const,
+            strokeColor: '#5caa92',
+            label: { text: 'Things to try', fontSize: 24 },
+          },
+          {
+            type: 'rectangle' as const,
+            x: 700,
+            y: 210,
+            width: 220,
+            height: 200,
+            backgroundColor: '#ede3f8',
+            fillStyle: 'solid' as const,
+            strokeColor: '#ab85c8',
+            label: { text: 'Next steps', fontSize: 24 },
+          },
+          {
+            type: 'text' as const,
+            x: 160,
+            y: 455,
+            text: 'No idea is too small. Double-click a card to make it yours.',
+            fontSize: 18,
+            strokeColor: '#69716a',
+          },
+        ]
+      : [
+          {
+            type: 'text' as const,
+            x: 160,
+            y: 110,
+            text: 'Let’s connect the dots',
+            fontSize: 36,
+            strokeColor: '#26312f',
+          },
+          {
+            type: 'rectangle' as const,
+            id: 'client',
+            x: 160,
+            y: 240,
+            width: 180,
+            height: 110,
+            backgroundColor: '#d5ece5',
+            fillStyle: 'solid' as const,
+            strokeColor: '#5caa92',
+            label: { text: 'Client', fontSize: 24 },
+          },
+          {
+            type: 'rectangle' as const,
+            id: 'api',
+            x: 460,
+            y: 240,
+            width: 180,
+            height: 110,
+            backgroundColor: '#fff3bd',
+            fillStyle: 'solid' as const,
+            strokeColor: '#d0ae46',
+            label: { text: 'API', fontSize: 24 },
+          },
+          {
+            type: 'rectangle' as const,
+            id: 'database',
+            x: 760,
+            y: 240,
+            width: 180,
+            height: 110,
+            backgroundColor: '#ede3f8',
+            fillStyle: 'solid' as const,
+            strokeColor: '#ab85c8',
+            label: { text: 'Database', fontSize: 24 },
+          },
+          {
+            type: 'arrow' as const,
+            x: 345,
+            y: 295,
+            width: 110,
+            height: 0,
+            points: [
+              [0, 0],
+              [110, 0],
+            ],
+            strokeColor: '#69716a',
+            endArrowhead: 'arrow' as const,
+          },
+          {
+            type: 'arrow' as const,
+            x: 645,
+            y: 295,
+            width: 110,
+            height: 0,
+            points: [
+              [0, 0],
+              [110, 0],
+            ],
+            strokeColor: '#69716a',
+            endArrowhead: 'arrow' as const,
+          },
+          {
+            type: 'text' as const,
+            x: 160,
+            y: 410,
+            text: 'Start with the big picture. Add the details together.',
+            fontSize: 18,
+            strokeColor: '#69716a',
+          },
+        ];
+  return convertToExcalidrawElements(skeletons) as unknown as SceneElement[];
+}
