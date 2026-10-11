@@ -1,0 +1,8 @@
+{
+  "name": "@syncspace/web", "version": "1.0.0", "private": true, "type": "module",
+  "scripts": {"dev": "vite --host 0.0.0.0", "build": "tsc --noEmit && vite build", "typecheck": "tsc --noEmit"},
+  "dependencies": {
+    "@syncspace/shared": "*", "@excalidraw/excalidraw": "0.18.1", "@livekit/components-react": "^2.9.24", "@livekit/components-styles": "^1.2.0", "livekit-client": "^2.15.0", "lucide-react": "^0.468.0", "react": "^19.2.0", "react-dom": "^19.2.0", "socket.io-client": "^4.8.1", "zod": "^3.25.76"
+  },
+  "devDependencies": {"@types/react": "^19.2.0", "@types/react-dom": "^19.2.0", "@vitejs/plugin-react": "^5.0.4", "vite": "^7.1.9"}
+}

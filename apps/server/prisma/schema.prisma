@@ -1,0 +1,29 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+model Session {
+  id String @id @default(uuid())
+  roomCode String @unique
+  title String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  revision Int @default(0)
+  sceneData Json
+  messages Json
+  participants Participant[]
+  @@index([expiresAt])
+}
+model Participant {
+  id String @id @default(uuid())
+  sessionId String
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  guestId String @unique
+  username String
+  color String
+  joinedAt DateTime @default(now())
+  leftAt DateTime?
+}
