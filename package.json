@@ -1,0 +1,14 @@
+{
+  "name": "syncspace", "version": "1.0.0", "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c yellow,cyan \"npm run dev -w @syncspace/server\" \"npm run dev -w @syncspace/web\"",
+    "build": "npm run build -w @syncspace/server && npm run build -w @syncspace/web",
+    "typecheck": "npm run typecheck -w @syncspace/server && npm run typecheck -w @syncspace/web",
+    "test": "tsx --test tests/*.test.ts",
+    "db:generate": "npm run db:generate -w @syncspace/server",
+    "db:push": "npm run db:push -w @syncspace/server"
+  },
+  "devDependencies": {"concurrently": "^9.2.1", "tsx": "^4.20.6", "typescript": "^5.9.3", "@types/node": "^24.10.0"},
+  "engines": {"node": ">=22"}
+}
