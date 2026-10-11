@@ -1,0 +1,119 @@
+import { BadRequestException, GoneException, Injectable, NotFoundException, OnModuleDestroy, OnModuleInit, UnauthorizedException, ServiceUnavailableException } from '@nestjs/common';
+import { randomBytes, randomUUID } from 'node:crypto';
+import { EventEmitter } from 'node:events';
+import jwt from 'jsonwebtoken';
+import { AccessToken } from 'livekit-server-sdk';
+import { z } from 'zod';
+import { deltaSchema, mergeScene, sceneSchema, usernameSchema, type Participant, type RoomInfo, type SceneElement } from '../../../packages/shared/src';
+import { FileRepository, PostgresRepository, type SessionRecord, type Repository } from './repository';
+
+export type Claims = { roomCode: string; guestId: string };
+const colors = ['#e77945', '#7864d7', '#2b9b8c', '#cf6993', '#428bd6'];
+const codeSchema = z.string().regex(/^[A-Za-z0-9_-]{12}$/);
+@Injectable()
+export class RoomsService implements OnModuleInit, OnModuleDestroy {
+  readonly events = new EventEmitter();
+  private repository: Repository;
+  private cache = new Map<string, SessionRecord>();
+  private loading = new Map<string, Promise<SessionRecord | undefined>>();
+  private dirty = new Set<string>();
+  private timer?: NodeJS.Timeout;
+  private flushing: Promise<void> = Promise.resolve();
+  private secret: string;
+  private ttl: number;
+  readonly online = new Map<string, Map<string, Participant>>();
+  constructor() {
+    const secret = process.env.GUEST_TOKEN_SECRET;
+    if (process.env.NODE_ENV === 'production' && (!secret || secret.length < 32 || !process.env.DATABASE_URL)) throw new Error('Production requires DATABASE_URL and GUEST_TOKEN_SECRET (32+ characters).');
+    this.secret = secret || randomBytes(32).toString('hex');
+    this.ttl = Number(process.env.ROOM_TTL_HOURS || 24) * 3600000;
+    if (!Number.isFinite(this.ttl) || this.ttl < 60000 || this.ttl > 7 * 86400000) throw new Error('ROOM_TTL_HOURS must be between 1/60 and 168.');
+    this.repository = process.env.DATABASE_URL ? new PostgresRepository() : new FileRepository();
+  }
+  onModuleInit() {
+    this.timer = setInterval(() => { void this.flush().catch(error => console.error('Snapshot persistence failed:', error.message)); }, 1500);
+    this.timer.unref();
+  }
+  async onModuleDestroy() { clearInterval(this.timer); await this.flush(); await this.repository.close(); }
+  async flush() {
+    this.flushing = this.flushing.catch(() => {}).then(async () => {
+      for (const code of [...this.dirty]) {
+        const room = this.cache.get(code);
+        if (room) { this.dirty.delete(code); try { await this.repository.put(room); } catch (e) { this.dirty.add(code); throw e; } }
+      }
+      for (const [code, room] of this.cache) if (Date.parse(room.expiresAt) <= Date.now()) {
+        this.events.emit('expired', code); this.cache.delete(code); this.online.delete(code); this.dirty.delete(code);
+      }
+    });
+    return this.flushing;
+  }
+  async room(code: string) {
+    if (!codeSchema.safeParse(code).success) throw new NotFoundException('This room could not be found.');
+    let room = this.cache.get(code);
+    if (!room) {
+      let pending = this.loading.get(code);
+      if (!pending) { pending = this.repository.get(code); this.loading.set(code, pending); }
+      try { room = await pending; if (room) this.cache.set(code, room); } finally { this.loading.delete(code); }
+    }
+    if (!room) throw new NotFoundException('This room could not be found. Check your invitation link.');
+    if (Date.parse(room.expiresAt) <= Date.now()) throw new GoneException('This room has expired. Start a fresh space.');
+    return room;
+  }
+  participants(code: string) { return [...new Map([...(this.online.get(code)?.values() || [])].map(p => [p.guestId, p])).values()]; }
+  info(room: SessionRecord): RoomInfo { return { roomCode: room.roomCode, title: room.title, createdAt: room.createdAt, expiresAt: room.expiresAt, participantCount: this.participants(room.roomCode).length, videoEnabled: !!(process.env.LIVEKIT_URL && process.env.LIVEKIT_API_KEY && process.env.LIVEKIT_API_SECRET) }; }
+  private addGuest(room: SessionRecord, username: string) {
+    if (room.guests.length >= 500) throw new BadRequestException('This room has reached its guest limit. Start a new room.');
+    const guest = { guestId: randomUUID(), username, color: colors[room.guests.length % colors.length], joinedAt: new Date().toISOString(), leftAt: null };
+    room.guests.push(guest);
+    const token = jwt.sign({ roomCode: room.roomCode, guestId: guest.guestId }, this.secret, { algorithm: 'HS256', expiresIn: Math.max(1, Math.floor((Date.parse(room.expiresAt) - Date.now()) / 1000)), issuer: 'syncspace', audience: 'guest' });
+    return { guest: { guestId: guest.guestId, username: guest.username, color: guest.color, joinedAt: guest.joinedAt }, token, room: this.info(room) };
+  }
+  async create(input: unknown) {
+    const data = z.object({ username: usernameSchema, title: z.string().trim().min(1).max(80).default('Untitled space'), elements: sceneSchema.default([]) }).parse(input);
+    const room: SessionRecord = { roomCode: randomBytes(9).toString('base64url'), title: data.title, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + this.ttl).toISOString(), revision: 0, elements: data.elements, guests: [], messages: [] };
+    const session = this.addGuest(room, data.username);
+    await this.repository.put(room); this.cache.set(room.roomCode, room); return session;
+  }
+  async join(code: string, input: unknown) {
+    const { username } = z.object({ username: usernameSchema }).parse(input);
+    const room = await this.room(code);
+    const session = this.addGuest(room, username); await this.repository.put(room); return session;
+  }
+  decode(token: string): Claims {
+    try {
+      const claims = jwt.verify(token, this.secret, { algorithms: ['HS256'], issuer: 'syncspace', audience: 'guest' });
+      return z.object({ roomCode: codeSchema, guestId: z.string().uuid() }).parse(claims);
+    } catch { throw new UnauthorizedException('Your guest session has ended. Rejoin with your name.'); }
+  }
+  async authorize(token: string, code?: string) {
+    const claims = this.decode(token);
+    if (code && code !== claims.roomCode) throw new UnauthorizedException('This invitation belongs to a different room.');
+    const room = await this.room(claims.roomCode);
+    const guest = room.guests.find(g => g.guestId === claims.guestId && g.leftAt === null);
+    if (!guest) throw new UnauthorizedException('Your guest session has ended. Rejoin with your name.');
+    return { room, guest, claims };
+  }
+  async snapshot(token: string, code: string) { const { room } = await this.authorize(token, code); return { elements: room.elements, revision: room.revision }; }
+  update(room: SessionRecord, input: unknown) {
+    const delta = deltaSchema.parse(input);
+    const merged = mergeScene(room.elements, delta);
+    if (merged.length > 5000) throw new BadRequestException('This whiteboard has reached its 5,000 object limit.');
+    room.elements = merged; room.revision++; this.dirty.add(room.roomCode);
+    return { elements: merged, revision: room.revision };
+  }
+  message(room: SessionRecord, guest: Participant, input: unknown) {
+    const text = z.object({ text: z.string().trim().min(1).max(1000) }).parse(input).text;
+    const message = { id: randomUUID(), guestId: guest.guestId, username: guest.username, text, createdAt: new Date().toISOString() };
+    room.messages.push(message); room.messages = room.messages.slice(-100); this.dirty.add(room.roomCode); return message;
+  }
+  async leave(token: string, code: string) { const { room, guest } = await this.authorize(token, code); guest.leftAt = new Date().toISOString(); await this.repository.put(room); this.events.emit('revoked', code, guest.guestId); return { left: true }; }
+  async livekit(token: string, code: string) {
+    const { room, guest } = await this.authorize(token, code);
+    const { LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET } = process.env;
+    if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) throw new ServiceUnavailableException('Video calls are not configured on this server yet. You can keep collaborating on the whiteboard.');
+    const ttl = Math.min(600, Math.max(1, Math.floor((Date.parse(room.expiresAt) - Date.now()) / 1000)));
+    const access = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, { identity: guest.guestId, name: guest.username, ttl });
+    access.addGrant({ roomJoin: true, room: code, canPublish: true, canSubscribe: true, canPublishData: true });
+    return { token: await access.toJwt(), url: LIVEKIT_URL };
+  }
+}
