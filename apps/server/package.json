@@ -11,6 +11,7 @@
     "db:push": "prisma db push"
   },
   "dependencies": {
+    "@catsketch/shared": "*",
     "@nestjs/common": "^11.1.11",
     "@nestjs/core": "^11.1.11",
     "@nestjs/platform-express": "^11.1.11",
@@ -18,10 +19,10 @@
     "@nestjs/websockets": "^11.1.11",
     "@prisma/client": "6.19.0",
     "@stream-io/node-sdk": "^0.8.12",
-    "@catsketch/shared": "*",
     "dotenv": "^17.2.3",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
+    "node-cron": "^4.6.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "socket.io": "^4.8.1",

@@ -21,6 +21,7 @@ CatSketch can run as **one Render Node Web Service**. Nest serves the built Reac
 | `GUEST_TOKEN_SECRET` | A fresh random secret of at least 32 characters                     |
 | `WEB_ORIGIN`         | Exact assigned HTTPS URL, without a trailing slash                  |
 | `APP_URL`            | Same exact HTTPS URL                                                |
+| `PING_URL`           | Assigned HTTPS URL followed by `/api/keep-alive`                    |
 | `STREAM_API_KEY`     | Your Stream application's key                                       |
 | `STREAM_API_SECRET`  | Your **rotated** Stream server secret                               |
 | `STREAM_CALL_TYPE`   | `default`, or your configured call type                             |
@@ -35,17 +36,23 @@ Render Free supports WebSockets, managed HTTPS, and custom domains. It sleeps af
 
 Neon and Stream each have their own usage limits and billing, independent of Render. Check your actual account plan before inviting a large audience. The app's planned Premium price does not cover provider bills automatically.
 
-## Optional external keep-alive requests
+## Production keep-alive cron
 
 `GET https://YOUR-SERVICE.onrender.com/api/keep-alive` returns `{"status":"ok","service":"catsketch","message":"I am alive"}` and prints **I am alive** in the backend logs. It has no login requirement, does not query Neon or Stream, and disables response caching. Keep `/api/health` as Render's health check.
 
+Set `PING_URL=https://YOUR-SERVICE.onrender.com/api/keep-alive` in Render. In production, the backend runs a `node-cron` job with `*/14 * * * *`, issuing a GET to that URL and logging **Don't Sleep ........... I am alive** after a successful response. This expression runs at minutes 0, 14, 28, 42, and 56 each hour, with a four-minute gap at the hour boundary. Requests time out after ten seconds, overlapping runs are skipped, and the task stops on shutdown. Development does not run this cron. Leaving `PING_URL` empty disables it; an invalid URL fails startup with a configuration error.
+
+This self-ping runs only while the process is awake. If Render sleeps, restarts, or suspends the service, its internal cron cannot execute until the service starts again. An external scheduler can also call the same endpoint independently.
+
+## Optional external keep-alive requests
+
 After deployment, use an external scheduler such as [cron-job.org](https://cron-job.org/en/). Create a job named **CatSketch keep alive**, set its URL to your deployed `/api/keep-alive` endpoint, and use the **GET** method. Choose a schedule that runs at most every 14 minutes. For a custom minute-based schedule, select minutes **0, 14, 28, 42, 56**, every hour, every day. This runs every 14 minutes within an hour and four minutes across the hour boundary. Enable the job and test it once; expect HTTP 200 and the log message. No application credentials are needed.
 
-The scheduler must run outside CatSketch: a timer inside a sleeping service cannot wake it. No external job is created by this repository; configure it after you have your deployed URL. Scheduled requests can reduce idle sleep, but scheduler delays, Render restarts, and free usage limits still apply. Keeping a service running consumes its workspace's 750 monthly free instance hours. See [Render's free service limits](https://render.com/docs/free) and [cron-job.org's FAQ](https://cron-job.org/en/faq/).
+No external job is created by this repository; configure one after you have your deployed URL if you want independent pings. Scheduled requests can reduce idle sleep, but scheduler delays, Render restarts, and free usage limits still apply. Keeping a service running consumes its workspace's 750 monthly free instance hours. See [Render's free service limits](https://render.com/docs/free) and [cron-job.org's FAQ](https://cron-job.org/en/faq/).
 
 ## Add a custom domain later
 
-Add the purchased domain in Render's Custom Domains settings and follow its DNS instructions. When HTTPS is ready, update `WEB_ORIGIN` and `APP_URL` to `https://YOUR-DOMAIN` and redeploy. If both the Render address and the custom address must work, use comma-separated exact origins in `WEB_ORIGIN`. Login cookies and browser-only drafts belong to the origin: drafts made on localhost or the old domain do not automatically move to the new domain. Share or export a private draft first.
+Add the purchased domain in Render's Custom Domains settings and follow its DNS instructions. When HTTPS is ready, update `WEB_ORIGIN` and `APP_URL` to `https://YOUR-DOMAIN`, set `PING_URL` to `https://YOUR-DOMAIN/api/keep-alive`, and redeploy. If both the Render address and the custom address must work, use comma-separated exact origins in `WEB_ORIGIN`. Login cookies and browser-only drafts belong to the origin: drafts made on localhost or the old domain do not automatically move to the new domain. Share or export a private draft first.
 
 ## Production preview locally
 
