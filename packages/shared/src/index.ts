@@ -55,6 +55,7 @@ export const cursorSchema = z.object({
 export type Cursor = z.infer<typeof cursorSchema>;
 export type Participant = {
   guestId: string;
+  avatarSeed?: string;
   username: string;
   color: string;
   joinedAt: string;
@@ -62,6 +63,7 @@ export type Participant = {
 export type ChatMessage = {
   id: string;
   guestId: string;
+  avatarSeed?: string;
   username: string;
   text: string;
   createdAt: string;
@@ -70,14 +72,21 @@ export type RoomInfo = {
   roomCode: string;
   title: string;
   createdAt: string;
-  expiresAt: string;
+  expiresAt: string | null;
   participantCount: number;
   audioEnabled: boolean;
+  maxParticipants: number | null;
 };
 export type GuestSession = {
   room: RoomInfo;
   guest: Participant;
   token: string;
+};
+export type OwnedRoomInfo = RoomInfo & {
+  updatedAt: string;
+  elementCount: number;
+  messageCount: number;
+  guestCount: number;
 };
 export type SyncState = {
   elements: SceneElement[];
@@ -112,3 +121,29 @@ export function mergeScene(
 export function fingerprint(element: SceneElement): string {
   return `${element.version}:${element.versionNonce}`;
 }
+
+export type Account = {
+  id: string;
+  email: string;
+  name: string;
+  plan: 'FREE' | 'PRO';
+  createdRoomsCount: number;
+  createdAt: string;
+};
+export type AccountSummary = Account & {
+  creationLimit: number | null;
+  remainingCreations: number | null;
+  maxParticipants: number | null;
+};
+export const FREE_ROOM_LIMIT = 5;
+export const FREE_PARTICIPANT_LIMIT = 10;
+export const emailSchema = z
+  .string()
+  .trim()
+  .email('Enter a valid email address.')
+  .max(254)
+  .transform((value) => value.toLowerCase());
+export const passwordSchema = z
+  .string()
+  .min(12, 'Use at least 12 characters for your password.')
+  .max(128);

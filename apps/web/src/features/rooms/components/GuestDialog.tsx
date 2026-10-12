@@ -1,28 +1,29 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, LoaderCircle, X } from 'lucide-react';
-import type { GuestSession, RoomInfo } from '@syncspace/shared';
-import type { Template } from '../../landing/types';
+import type { GuestSession, RoomInfo } from '@catsketch/shared';
+import { GuestAvatar } from '../../avatars/components/GuestAvatar';
 import { request } from '../../../lib/api-client';
 export default function GuestModal({
-  kind,
+  defaultName,
+  avatarSeed,
   roomCode,
-  template,
   onClose,
   onEnter,
 }: {
-  kind: 'create' | 'join';
+  defaultName?: string;
+  avatarSeed?: string;
   roomCode?: string;
-  template: Template;
   onClose: () => void;
   onEnter: (session: GuestSession) => void;
 }) {
-  const [name, setName] = useState(() => localStorage.getItem('syncspace:name') || '');
-  const [title, setTitle] = useState('');
-  const [link, setLink] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [name, setName] = useState(
+    () => defaultName || localStorage.getItem('syncspace:name') || '',
+  );
+  const [link, setLink] = useState(''),
+    [error, setError] = useState('');
+  const [busy, setBusy] = useState(false),
+    [loading, setLoading] = useState(!!roomCode);
   const [room, setRoom] = useState<RoomInfo | null>(null);
-  const [loading, setLoading] = useState(!!roomCode);
   useEffect(() => {
     if (!roomCode) return;
     let active = true;
@@ -30,8 +31,8 @@ export default function GuestModal({
       .then((info) => {
         if (active) setRoom(info);
       })
-      .catch((e) => {
-        if (active) setError(e.message);
+      .catch((error) => {
+        if (active) setError(error.message);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -56,25 +57,12 @@ export default function GuestModal({
     }
     setBusy(true);
     try {
-      let session: GuestSession;
-      if (kind === 'create') {
-        const { makeTemplate } = await import('../lib/templates');
-        session = await request<GuestSession>('/sessions', {
-          username: name.trim(),
-          title: title.trim() || 'Untitled space',
-          elements: makeTemplate(template),
-        });
-      } else {
-        const target = roomCode || /(?:\/room\/)?([\w-]{12})\/?(?:[?#].*)?$/.exec(link.trim())?.[1];
-        if (!target)
-          throw new Error('Paste a SyncSpace invitation link or a 12-character room code.');
-        session = await request<GuestSession>(`/sessions/${target}/join`, {
-          username: name.trim(),
-        });
-      }
-      onEnter(session);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not open the room.');
+      const target = roomCode || /(?:\/room\/)?([\w-]{12})\/?(?:[?#].*)?$/.exec(link.trim())?.[1];
+      if (!target)
+        throw new Error('Paste a CatSketch invitation link or a 12-character room code.');
+      onEnter(await request<GuestSession>(`/sessions/${target}/join`, { username: name.trim() }));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Could not open the room.');
     } finally {
       setBusy(false);
     }
@@ -82,8 +70,8 @@ export default function GuestModal({
   return (
     <div
       className="modal-backdrop"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !busy) onClose();
+      onClick={(event) => {
+        if (event.target === event.currentTarget && !busy) onClose();
       }}
     >
       <section
@@ -100,59 +88,45 @@ export default function GuestModal({
         >
           <X size={21} />
         </button>
-        <div className="modal-symbol">{kind === 'create' ? '✳' : '↗'}</div>
-        <div className="eyebrow">
-          {kind === 'create' ? 'MAKE ROOM FOR IDEAS' : 'YOU’RE INVITED'}
-        </div>
-        <h2 id="guest-title">
-          {kind === 'create' ? 'A fresh space. A fresh start.' : room?.title || 'Come on in.'}
-        </h2>
-        <p>
-          {kind === 'create'
-            ? 'All you need is a name. Your people can join with a link.'
-            : 'Pick a name, pull up a chair, and get into the flow.'}
-        </p>
+        <div className="modal-symbol">↗</div>
+        <div className="eyebrow">YOU’RE INVITED</div>
+        <h2 id="guest-title">{room?.title || 'Come on in.'}</h2>
+        <p>Pick a name, pull up a chair, and get into the flow.</p>
+        {defaultName && avatarSeed && (
+          <div className="guest-profile-preview">
+            <GuestAvatar guestId={avatarSeed} name={defaultName} />
+            <div>
+              <strong>{defaultName}</strong>
+              <span>Using your saved profile</span>
+            </div>
+          </div>
+        )}
         <form onSubmit={submit}>
           <label htmlFor="guest-name">Your name</label>
           <input
             id="guest-name"
+            readOnly={!!defaultName}
             autoFocus
             autoComplete="nickname"
             placeholder="e.g. Alex"
             maxLength={32}
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(event) => setName(event.target.value)}
             disabled={busy}
             required
           />
-          {kind === 'create' ? (
+          {!roomCode && (
             <>
-              <label htmlFor="space-title">
-                Space name <span>optional</span>
-              </label>
+              <label htmlFor="invite-link">Invitation link or room code</label>
               <input
-                id="space-title"
-                placeholder="e.g. The next big thing"
-                maxLength={80}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                id="invite-link"
+                placeholder="Paste your invitation here"
+                value={link}
+                onChange={(event) => setLink(event.target.value)}
                 disabled={busy}
+                required
               />
             </>
-          ) : (
-            !roomCode && (
-              <>
-                <label htmlFor="invite-link">Invitation link or room code</label>
-                <input
-                  id="invite-link"
-                  placeholder="Paste your invitation here"
-                  value={link}
-                  onChange={(e) => setLink(e.target.value)}
-                  disabled={busy}
-                  required
-                />
-              </>
-            )
           )}
           {error && (
             <p className="form-error" role="alert">
@@ -166,17 +140,21 @@ export default function GuestModal({
           >
             {busy || loading ? (
               <>
-                <LoaderCircle size={18} className="spin" />{' '}
+                <LoaderCircle size={18} className="spin" />
                 {loading ? 'Finding your space…' : 'Opening your space…'}
               </>
             ) : (
               <>
-                {kind === 'create' ? 'Create my space' : 'Join this space'} <ArrowRight size={18} />
+                Join this space <ArrowRight size={18} />
               </>
             )}
           </button>
         </form>
-        <div className="modal-footnote">No account. No password. Just you.</div>
+        <div className="modal-footnote">
+          {defaultName
+            ? 'Your saved profile travels with you.'
+            : 'No account. No password. Just you.'}
+        </div>
       </section>
     </div>
   );

@@ -1,10 +1,10 @@
 export function Brand({ small = false }: { small?: boolean }) {
   return (
-    <a className={`brand ${small ? 'brand-small' : ''}`} href="/" aria-label="SyncSpace home">
+    <a className={`brand ${small ? 'brand-small' : ''}`} href="/" aria-label="CatSketch home">
       <span className="brand-mark">
         <svg viewBox="0 0 40 40" fill="none">
           <path
-            d="M12 16h10a6 6 0 0 1 0 12h-2M28 24H18a6 6 0 0 1 0-12h2"
+            d="m11 17-1-7 8 5h4l8-5-1 7q5 5 1 11-3 5-10 5t-10-5q-4-6 1-11M15 22h1m8 0h1m-7 5q2 2 4 0"
             stroke="currentColor"
             strokeWidth="3"
             strokeLinecap="round"
@@ -12,7 +12,7 @@ export function Brand({ small = false }: { small?: boolean }) {
         </svg>
       </span>
       <span>
-        Sync<span className="brand-light">Space</span>
+        Cat<span className="brand-light">Sketch</span>
         <span className="brand-dot">.</span>
       </span>
     </a>

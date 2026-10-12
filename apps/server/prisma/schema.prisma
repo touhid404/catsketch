@@ -5,25 +5,84 @@ datasource db {
   provider = "postgresql"
   url = env("DATABASE_URL")
 }
+enum Plan {
+  FREE
+  PRO
+}
+model PlanTier {
+  code Plan @id
+  name String
+  creationLimit Int?
+  participantLimit Int?
+  users User[]
+}
+model User {
+  id String @id @default(uuid())
+  email String @unique
+  name String
+  passwordHash String
+  plan Plan @default(FREE)
+  tier PlanTier @relation(fields: [plan], references: [code])
+  createdRoomsCount Int @default(0)
+  createdAt DateTime @default(now())
+  sessions AuthSession[]
+  rooms Session[]
+  participants Participant[]
+}
+model AuthSession {
+  tokenHash String @id
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([expiresAt])
+  @@index([userId])
+}
 model Session {
   id String @id @default(uuid())
+  ownerId String?
+  owner User? @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   roomCode String @unique
   title String
   createdAt DateTime @default(now())
-  expiresAt DateTime
-  revision Int @default(0)
-  sceneData Json
-  messages Json
+  expiresAt DateTime?
+  snapshot WhiteboardSnapshot?
+  messages ChatMessage[]
   participants Participant[]
   @@index([expiresAt])
+  @@index([ownerId, createdAt])
 }
 model Participant {
   id String @id @default(uuid())
   sessionId String
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId String?
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   guestId String @unique
   username String
   color String
   joinedAt DateTime @default(now())
   leftAt DateTime?
+  messages ChatMessage[]
+  @@index([sessionId, joinedAt])
+}
+
+model WhiteboardSnapshot {
+  id String @id @default(uuid())
+  sessionId String @unique
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sceneData Json
+  revision Int @default(0)
+  updatedAt DateTime @updatedAt
+}
+model ChatMessage {
+  id String @id @default(uuid())
+  sessionId String
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  guestId String
+  participant Participant @relation(fields: [guestId], references: [guestId], onDelete: Cascade)
+  username String
+  text String
+  createdAt DateTime @default(now())
+  @@index([sessionId, createdAt])
 }

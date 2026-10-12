@@ -1,4 +1,4 @@
-import { polarBearImage } from '../lib/polar-bear';
+import { fancyCatImage } from '../lib/fancy-cat';
 export function GuestAvatar({
   guestId,
   name,
@@ -11,8 +11,8 @@ export function GuestAvatar({
   return (
     <img
       className={`guest-avatar ${className}`}
-      src={polarBearImage(guestId)}
-      alt={`${name}'s polar bear avatar`}
+      src={fancyCatImage(guestId)}
+      alt={`${name}'s fancy cat avatar`}
     />
   );
 }

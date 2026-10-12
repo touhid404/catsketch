@@ -1,4 +1,4 @@
-import type { GuestSession, RoomInfo } from '@syncspace/shared';
+import type { GuestSession, RoomInfo } from '@catsketch/shared';
 export function loadGuest(code: string): GuestSession | null {
   try {
     const session = JSON.parse(sessionStorage.getItem(`syncspace:guest:${code}`) || 'null');
@@ -16,7 +16,7 @@ export function rememberGuest(session: GuestSession) {
 export function recentRooms(): RoomInfo[] {
   try {
     return JSON.parse(localStorage.getItem('syncspace:recent') || '[]').filter(
-      (room: RoomInfo) => Date.parse(room.expiresAt) > Date.now(),
+      (room: RoomInfo) => !room.expiresAt || Date.parse(room.expiresAt) > Date.now(),
     );
   } catch {
     return [];

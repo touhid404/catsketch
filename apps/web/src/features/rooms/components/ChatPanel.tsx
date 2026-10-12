@@ -1,7 +1,7 @@
 import { GuestAvatar } from '../../avatars/components/GuestAvatar';
 import { useEffect, useRef, useState } from 'react';
 import { LoaderCircle, MessageCircle, Send } from 'lucide-react';
-import type { ChatMessage } from '@syncspace/shared';
+import type { ChatMessage } from '@catsketch/shared';
 export default function ChatPanel({
   messages,
   guestId,
@@ -55,7 +55,7 @@ export default function ChatPanel({
           >
             <div>
               <GuestAvatar
-                guestId={message.guestId}
+                guestId={message.avatarSeed ?? message.guestId}
                 name={message.username}
                 className="chat-avatar"
               />

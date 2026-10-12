@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   CallingState,
+  SfuModels,
   CancelCallButton,
   DeviceSelectorAudioInput,
   DeviceSelectorAudioOutput,
@@ -17,14 +18,14 @@ import {
 import '@stream-io/video-react-sdk/dist/css/styles.css';
 import { ArrowRight, ChevronLeft, Headphones, LoaderCircle, MicOff, Settings2 } from 'lucide-react';
 import { GuestAvatar } from '../../avatars/components/GuestAvatar';
-import type { GuestSession } from '@syncspace/shared';
+import type { GuestSession } from '@catsketch/shared';
 import { request } from '../../../lib/api-client';
 type Credentials = {
   apiKey: string;
   token: string;
   callId: string;
   callType: string;
-  user: { id: string; name: string };
+  user: { id: string; name: string; custom?: { avatarSeed: string } };
 };
 export default function AudioCallPanel({
   session,
@@ -152,7 +153,7 @@ export default function AudioCallPanel({
       {client && call && (
         <StreamVideo client={client}>
           <StreamCall call={call}>
-            <StreamTheme className="syncspace-call-theme">
+            <StreamTheme className="catsketch-call-theme">
               {stage === 'joined' ? (
                 <div className="active-call">
                   <CallStatus />
@@ -182,7 +183,10 @@ export default function AudioCallPanel({
                     <h2>Let’s talk it through.</h2>
                     <p>A shared conversation, with room for your ideas.</p>
                     <div className="audio-preview">
-                      <GuestAvatar guestId={session.guest.guestId} name={session.guest.username} />
+                      <GuestAvatar
+                        guestId={session.guest.avatarSeed ?? session.guest.guestId}
+                        name={session.guest.username}
+                      />
                       <strong>{session.guest.username}</strong>
                     </div>
                     <div className="preview-controls">
@@ -254,9 +258,18 @@ function AudioParticipants() {
             key={participant.sessionId}
             className={`audio-person ${participant.isSpeaking ? 'is-speaking' : ''}`}
           >
-            <GuestAvatar guestId={participant.userId} name={participant.name || 'Guest'} />
+            <GuestAvatar
+              guestId={
+                participant.custom?.fields.avatarSeed?.kind.oneofKind === 'stringValue'
+                  ? participant.custom.fields.avatarSeed.kind.stringValue
+                  : participant.userId
+              }
+              name={participant.name || 'Guest'}
+            />
             <span>{participant.name || 'Guest'}</span>
-            {!participant.publishedTracks.includes(1) && <MicOff size={12} aria-label="Muted" />}
+            {!participant.publishedTracks.includes(SfuModels.TrackType.AUDIO) && (
+              <MicOff size={12} aria-label="Muted" />
+            )}
           </div>
         ))}
       </div>

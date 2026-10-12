@@ -1,5 +1,5 @@
 import { convertToExcalidrawElements } from '@excalidraw/excalidraw';
-import type { SceneElement } from '@syncspace/shared';
+import type { SceneElement } from '@catsketch/shared';
 import type { Template } from '../../landing/types';
 export function makeTemplate(template: Template): SceneElement[] {
   if (template === 'blank') return [];

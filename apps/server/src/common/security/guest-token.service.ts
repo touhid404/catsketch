@@ -16,10 +16,16 @@ export class GuestTokenService {
       throw new Error('Set GUEST_TOKEN_SECRET to at least 32 random characters.');
     this.secret = secret || randomBytes(32).toString('hex');
   }
-  issue(claims: GuestClaims, expiresAt: string) {
+  issue(claims: GuestClaims, expiresAt: string | null) {
     return jwt.sign(claims, this.secret, {
       algorithm: 'HS256',
-      expiresIn: Math.max(1, Math.floor((Date.parse(expiresAt) - Date.now()) / 1000)),
+      expiresIn: Math.max(
+        1,
+        Math.min(
+          86400,
+          expiresAt ? Math.floor((Date.parse(expiresAt) - Date.now()) / 1000) : 86400,
+        ),
+      ),
       issuer: 'syncspace',
       audience: 'guest',
     });

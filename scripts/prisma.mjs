@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { migrationDatabaseUrl } from './database-url.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 dotenv.config({ path: path.join(root, '.env'), quiet: true });
 const child = spawn(
@@ -13,7 +14,16 @@ const child = spawn(
       ? []
       : ['--schema', path.join(root, 'apps/server/prisma/schema.prisma')]),
   ],
-  { cwd: root, env: process.env, stdio: 'inherit' },
+  {
+    cwd: root,
+    env: {
+      ...process.env,
+      ...(['migrate', 'db', 'introspect'].includes(process.argv[2]) && process.env.DATABASE_URL
+        ? { DATABASE_URL: migrationDatabaseUrl(process.env.DATABASE_URL) }
+        : {}),
+    },
+    stdio: 'inherit',
+  },
 );
 child.on('exit', (code) => {
   process.exitCode = code ?? 1;
