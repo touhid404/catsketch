@@ -3,6 +3,7 @@ import { Controller, Get, Header, Logger, Module } from '@nestjs/common';
 import { RoomsModule } from './modules/rooms/rooms.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CallsModule } from './modules/calls/calls.module';
+import { KeepAliveModule } from './modules/keep-alive/keep-alive.module';
 @Controller()
 class HealthController {
   private readonly logger = new Logger(HealthController.name);
@@ -19,7 +20,7 @@ class HealthController {
   }
 }
 @Module({
-  imports: [RoomsModule, CallsModule, AuthModule, AccountsModule],
+  imports: [RoomsModule, CallsModule, AuthModule, AccountsModule, KeepAliveModule],
   controllers: [HealthController],
 })
 export class AppModule {}
