@@ -1,3 +1,4 @@
+import { ACCOUNT_REPOSITORY } from './account.repository';
 import { Module } from '@nestjs/common';
 import { SESSION_REPOSITORY } from './session.repository';
 import { PostgresRepository } from './postgres.repository';
@@ -15,7 +16,8 @@ import { FileRepository } from './file.repository';
         );
       },
     },
+    { provide: ACCOUNT_REPOSITORY, useExisting: SESSION_REPOSITORY },
   ],
-  exports: [SESSION_REPOSITORY],
+  exports: [SESSION_REPOSITORY, ACCOUNT_REPOSITORY],
 })
 export class PersistenceModule {}

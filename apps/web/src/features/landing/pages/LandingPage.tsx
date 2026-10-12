@@ -3,44 +3,67 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
-  Clock3,
-  Layers,
   Link,
   MousePointer2,
   Pencil,
   Plus,
-  Sparkles,
   Users,
   Headphones,
 } from 'lucide-react';
+import { useState } from 'react';
+import type { AccountSummary } from '@catsketch/shared';
+import { GuestAvatar } from '../../avatars/components/GuestAvatar';
 import { Brand } from '../../../components/ui/Brand';
-import { recentRooms } from '../../rooms/lib/guest-session';
+import { CatIllustration } from '../../avatars/components/CatIllustration';
 import type { Template } from '../types';
 export default function Landing({
   onCreate,
   onJoin,
+  account,
+  accountLoading,
+  onSignIn,
+  onDashboard,
+  onPremium,
 }: {
   onCreate: (template: Template) => void;
   onJoin: () => void;
+  account: AccountSummary | null;
+  accountLoading: boolean;
+  onSignIn: () => void;
+  onDashboard: () => void;
+  onPremium: () => void;
 }) {
-  const rooms = recentRooms();
+  const [yearly, setYearly] = useState(false);
   return (
     <div className="landing">
       <header className="site-header">
         <Brand />
         <nav aria-label="Main navigation">
           <a href="#how-it-works">How it works</a>
-          <a href="#possibilities">Made for your ideas</a>
+          <a href="#plans">Plans</a>
           <button className="button button-outline button-small" onClick={onJoin}>
             Join a space <ArrowUpRight size={16} />
           </button>
+          {account ? (
+            <button className="button button-outline button-small" onClick={onDashboard}>
+              Dashboard <ArrowUpRight size={16} />
+            </button>
+          ) : (
+            <button
+              className="nav-sign-in text-button"
+              onClick={onSignIn}
+              disabled={accountLoading}
+            >
+              Sign in
+            </button>
+          )}
         </nav>
       </header>
       <main>
         <section className="hero">
           <div className="hero-copy">
             <div className="hero-badge">
-              <span className="live-dot" /> SMALL TEAMS. BIG POSSIBILITIES.
+              <span className="live-dot" /> SMALL TEAMS. CURIOUS MINDS.
             </div>
             <h1>
               Good ideas need
@@ -76,7 +99,7 @@ export default function Landing({
                 <Check size={14} /> Free to get started
               </span>
               <span>
-                <Check size={14} /> No account needed
+                <Check size={14} /> Start without an account
               </span>
             </div>
             <div className="hero-note">
@@ -93,7 +116,8 @@ export default function Landing({
             </div>
           </div>
           <div className="hero-visual">
-            <div className="visual-scribble">a little messy. a lot of possibility.</div>
+            <CatIllustration className="hero-cat" />
+            <div className="visual-scribble">a cozy corner for your next big idea.</div>
             <div className="demo-board">
               <div className="demo-header">
                 <span className="demo-window-dots">
@@ -146,7 +170,6 @@ export default function Landing({
                     <br />
                     built it together?
                   </strong>
-                  <span className="note-star">✳</span>
                 </div>
                 <div className="demo-note note-mint">
                   <strong>
@@ -205,9 +228,9 @@ export default function Landing({
             </div>
             <div className="floating-call">
               <div className="call-avatars">
-                <span>A</span>
-                <span>S</span>
-                <span>J</span>
+                <GuestAvatar guestId="hero-cat-alex" name="Alex" />
+                <GuestAvatar guestId="hero-cat-sam" name="Sam" />
+                <GuestAvatar guestId="hero-cat-jules" name="Jules" />
               </div>
               <div>
                 <strong>Ideas are better together</strong>
@@ -220,9 +243,7 @@ export default function Landing({
                 <i />
               </span>
             </div>
-            <div className="floating-label">
-              <Sparkles size={15} /> Your next “aha!” starts here
-            </div>
+            <div className="floating-label">Your next “aha!” starts here</div>
           </div>
         </section>
         <div className="use-case-strip">
@@ -305,36 +326,6 @@ export default function Landing({
             </button>
           </div>
         </section>
-        {rooms.length > 0 && (
-          <section className="recent-section">
-            <div className="section-heading">
-              <h2>Your recent spaces</h2>
-              <span className="section-aside">
-                <Clock3 size={15} /> Saved on this browser
-              </span>
-            </div>
-            <div className="recent-grid">
-              {rooms.map((room) => (
-                <a href={`/room/${room.roomCode}`} className="recent-room" key={room.roomCode}>
-                  <Layers size={20} />
-                  <div>
-                    <strong>{room.title}</strong>
-                    <span>
-                      Open until{' '}
-                      {new Date(room.expiresAt).toLocaleString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      })}
-                    </span>
-                  </div>
-                  <ArrowUpRight size={18} />
-                </a>
-              ))}
-            </div>
-          </section>
-        )}
         <section className="how-section" id="how-it-works">
           <div className="how-intro">
             <div className="eyebrow">COLLABORATION, WITHOUT THE COMPLICATION.</div>
@@ -343,7 +334,7 @@ export default function Landing({
               <br />
               to “let’s make it happen.”
             </h2>
-            <p>No sign-ups. No downloads. No getting in the way.</p>
+            <p>Sketch without signing in. Share with an account. Guests need only a name.</p>
           </div>
           <div className="how-steps">
             <div>
@@ -353,7 +344,7 @@ export default function Landing({
               <div>
                 <span className="step-number">01</span>
                 <h3>Make a little space</h3>
-                <p>Give yourself a name and open a fresh whiteboard.</p>
+                <p>Open a private whiteboard. Start sketching right away.</p>
               </div>
             </div>
             <div>
@@ -363,7 +354,7 @@ export default function Landing({
               <div>
                 <span className="step-number">02</span>
                 <h3>Bring your people</h3>
-                <p>Share one link. Your team can jump right in.</p>
+                <p>Sign in to share a link. Guests join with just a name.</p>
               </div>
             </div>
             <div>
@@ -373,9 +364,93 @@ export default function Landing({
               <div>
                 <span className="step-number">03</span>
                 <h3>Let the ideas flow</h3>
-                <p>Sketch, talk, and figure things out in real time.</p>
+                <p>Sketch, talk, and chase down ideas together in real time.</p>
               </div>
             </div>
+          </div>
+        </section>
+        <section className="plans-section" id="plans">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">ROOM TO START. SPACE TO GROW.</span>
+              <h2>Good ideas fit every plan.</h2>
+              <p>Start small, bring your people, and make something together.</p>
+            </div>
+          </div>
+          <div className="plans-grid">
+            <article className="plan-card free-plan">
+              <span className="plan-tag">AVAILABLE NOW</span>
+              <h3>A little space</h3>
+              <div className="plan-price">
+                $0 <span>/ forever</span>
+              </div>
+              <p>Everything you need to get your ideas moving.</p>
+              <ul>
+                <li>
+                  <Check size={16} /> Five shared spaces created in total
+                </li>
+                <li>
+                  <Check size={16} /> Up to ten people per space at once
+                </li>
+                <li>
+                  <Check size={16} /> Saved whiteboards, chat, and audio calls
+                </li>
+                <li>
+                  <Check size={16} /> Guests join with a name, no account
+                </li>
+                <li>
+                  <Check size={16} /> Live cursors, templates, and PNG export
+                </li>
+                <li>
+                  <Check size={16} /> Your own fancy cat avatar
+                </li>
+              </ul>
+              <button className="button button-primary" onClick={() => onCreate('blank')}>
+                Start with a free space <ArrowRight size={17} />
+              </button>
+              <span className="plan-footnote">
+                Sketch freely. Sign in to share. No card needed.
+              </span>
+            </article>
+            <article className="plan-card premium-plan">
+              <CatIllustration variant="wave" className="premium-corner-cat" />
+              <span className="plan-tag">PREMIUM · COMING SOON</span>
+              <h3>A little more possibility</h3>
+              <div className="plan-price">
+                {yearly ? '$3.20' : '$4'} <span>/ month</span>
+              </div>
+              <div className="billing-toggle" role="group" aria-label="Premium billing period">
+                <button aria-pressed={!yearly} onClick={() => setYearly(false)}>
+                  Monthly
+                </button>
+                <button aria-pressed={yearly} onClick={() => setYearly(true)}>
+                  Yearly <span>Save 20%</span>
+                </button>
+              </div>
+              <p className="billing-caption">
+                {yearly
+                  ? '$38.40 billed yearly. Save $9.60 each year.'
+                  : '$4 billed monthly. Choose yearly to save 20%.'}
+              </p>
+              <ul>
+                <li>
+                  <Check size={16} /> Planned: unlimited space creations
+                </li>
+                <li>
+                  <Check size={16} /> Planned: unlimited participant allowance
+                </li>
+                <li>
+                  <Check size={16} /> Everything included in Free
+                </li>
+                <li>
+                  <Check size={16} /> Guest access stays simple
+                </li>
+              </ul>
+              <button className="button button-primary" onClick={onPremium}>
+                Choose Premium
+              </button>
+              <span className="plan-footnote">Coming soon. Planned pricing; no payment today.</span>
+            </article>
           </div>
         </section>
         <section className="closing-cta">
@@ -388,7 +463,7 @@ export default function Landing({
       </main>
       <footer className="site-footer">
         <Brand small />
-        <span>Made for thinking together.</span>
+        <span>Made for curious minds and good company.</span>
         <div>
           <span className="live-dot" /> Just a name. Just a link. Just like that.
         </div>

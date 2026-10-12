@@ -1,5 +1,5 @@
 {
-  "name": "@syncspace/server",
+  "name": "@catsketch/server",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -18,7 +18,7 @@
     "@nestjs/websockets": "^11.1.11",
     "@prisma/client": "6.19.0",
     "@stream-io/node-sdk": "^0.8.12",
-    "@syncspace/shared": "*",
+    "@catsketch/shared": "*",
     "dotenv": "^17.2.3",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",

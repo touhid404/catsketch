@@ -14,13 +14,14 @@ import {
   type Participant,
   type SceneElement,
   type SyncState,
-} from '@syncspace/shared';
-import { polarBearImage } from '../../avatars/lib/polar-bear';
+} from '@catsketch/shared';
+import { fancyCatImage } from '../../avatars/lib/fancy-cat';
 import { SOCKET_URL } from '../../../lib/api-client';
 export function useCollaboration(
   session: GuestSession,
   notify: (message: string) => void,
   onExpired: () => void,
+  onDeleted: () => void,
 ) {
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const [status, setStatus] = useState<'connecting' | 'live' | 'offline'>('connecting');
@@ -31,8 +32,8 @@ export function useCollaboration(
   const authoritative = useRef<SceneElement[]>([]);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const flush = useRef<() => void>(() => {});
-  const callbacks = useRef({ notify, onExpired });
-  callbacks.current = { notify, onExpired };
+  const callbacks = useRef({ notify, onExpired, onDeleted });
+  callbacks.current = { notify, onExpired, onDeleted };
   useEffect(() => {
     if (!api) return;
     let mounted = true,
@@ -56,7 +57,7 @@ export function useCollaboration(
         const cursor = cursors.get(person.guestId);
         collaborators.set(person.guestId as SocketId, {
           username: person.username,
-          avatarUrl: polarBearImage(person.guestId),
+          avatarUrl: fancyCatImage(person.avatarSeed ?? person.guestId),
           color: { background: person.color, stroke: person.color },
           ...(cursor && Date.now() - cursor.at < 10000
             ? {
@@ -160,6 +161,16 @@ export function useCollaboration(
         current.some((m) => m.id === message.id) ? current : [...current, message].slice(-100),
       ),
     );
+    s.on('room:deleted', () => {
+      ready = false;
+      s.disconnect();
+      callbacks.current.notify('This space has been deleted by its owner.');
+      callbacks.current.onDeleted();
+    });
+    s.on('room:reload', () => {
+      s.disconnect();
+      s.connect();
+    });
     s.on('disconnect', (reason) => {
       ready = false;
       sending = false;

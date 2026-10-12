@@ -1,5 +1,5 @@
 {
-  "name": "syncspace",
+  "name": "catsketch",
   "version": "1.0.0",
   "private": true,
   "workspaces": [
@@ -7,22 +7,24 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run build:shared && concurrently -k -n api,web -c yellow,cyan \"npm run dev -w @syncspace/server\" \"npm run dev -w @syncspace/web\"",
-    "build": "npm run build:shared && npm run build -w @syncspace/server && npm run build -w @syncspace/web",
-    "typecheck": "npm run typecheck -w @syncspace/server && npm run typecheck -w @syncspace/web",
+    "dev": "npm run build:shared && concurrently -k -n api,web -c yellow,cyan \"npm run dev -w @catsketch/server\" \"npm run dev -w @catsketch/web\"",
+    "build": "npm run build:shared && npm run build -w @catsketch/server && npm run build -w @catsketch/web",
+    "typecheck": "npm run typecheck -w @catsketch/server && npm run typecheck -w @catsketch/web",
     "test": "tsx --test tests/*.test.ts",
     "db:generate": "node scripts/prisma.mjs generate",
     "db:push": "node scripts/prisma.mjs db push",
-    "dev:demo": "npm run build:shared && concurrently -k -n api,web -c yellow,cyan \"ALLOW_FILE_STORAGE=true npm run dev -w @syncspace/server\" \"npm run dev -w @syncspace/web\"",
-    "build:shared": "npm run build -w @syncspace/shared",
+    "dev:demo": "npm run build:shared && concurrently -k -n api,web -c yellow,cyan \"ALLOW_FILE_STORAGE=true npm run dev -w @catsketch/server\" \"npm run dev -w @catsketch/web\"",
+    "build:shared": "npm run build -w @catsketch/shared",
     "postinstall": "npm run build:shared && npm run db:generate",
     "db:migrate": "node scripts/prisma.mjs migrate deploy",
     "db:dev": "node scripts/prisma.mjs migrate dev",
-    "format": "prettier --write apps packages scripts tests *.json *.md",
-    "format:check": "prettier --check apps packages scripts tests *.json *.md"
+    "format": "prettier --write apps packages scripts tests docs .github *.json *.md",
+    "format:check": "prettier --check apps packages scripts tests docs .github *.json *.md",
+    "test:postgres": "node scripts/test-postgres.mjs",
+    "start": "npm run start -w @catsketch/server",
+    "test:hosting": "node scripts/smoke-production.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "^1.64.0",
     "@types/node": "^24.10.0",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
@@ -33,5 +35,16 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "overrides": {
+    "@excalidraw/excalidraw": {
+      "sass": "1.105.1"
+    },
+    "lodash-es": "4.18.1",
+    "nanoid@<4": "3.3.20",
+    "nanoid@>=4 <6": "5.1.16",
+    "effect": "3.22.2",
+    "deepmerge-ts": "8.0.2",
+    "katex": "0.19.0"
   }
 }

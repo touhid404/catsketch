@@ -10,7 +10,7 @@ import {
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
 import { ZodError } from 'zod';
-import { cursorSchema } from '@syncspace/shared';
+import { cursorSchema } from '@catsketch/shared';
 import { RoomsService } from './rooms.service';
 
 @WebSocketGateway({
@@ -34,6 +34,14 @@ export class RoomsGateway implements OnGatewayInit, OnGatewayDisconnect {
     this.rooms.events.on('expired', (code: string) => {
       io.to(code).emit('room:expired');
       io.in(code).disconnectSockets(true);
+    });
+    this.rooms.events.on('deleted', (code: string) => {
+      io.to(code).emit('room:deleted');
+      io.in(code).disconnectSockets(true);
+    });
+    this.rooms.events.on('reload', (code: string) => {
+      this.presence(code);
+      io.to(code).emit('room:reload');
     });
   }
   private rate(socket: Socket, event: string, limit: number) {
@@ -74,9 +82,17 @@ export class RoomsGateway implements OnGatewayInit, OnGatewayDisconnect {
   @SubscribeMessage('room:join')
   join(@ConnectedSocket() socket: Socket) {
     return this.handle(socket, 'join', 5, async ({ room, guest }) => {
+      const people = this.rooms.participants(room.roomCode);
+      if (
+        room.maxParticipants !== null &&
+        people.length >= room.maxParticipants &&
+        !people.some((person) => person.guestId === guest.guestId)
+      )
+        throw new Error('This space already has ten people. Try again when someone leaves.');
       if (!this.rooms.online.has(room.roomCode)) this.rooms.online.set(room.roomCode, new Map());
       const publicGuest = {
         guestId: guest.guestId,
+        avatarSeed: guest.avatarSeed ?? guest.userId ?? guest.guestId,
         username: guest.username,
         color: guest.color,
         joinedAt: guest.joinedAt,
@@ -120,8 +136,8 @@ export class RoomsGateway implements OnGatewayInit, OnGatewayDisconnect {
   }
   @SubscribeMessage('chat:send')
   chat(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown) {
-    return this.handle(socket, 'chat', 5, ({ room, guest }) => {
-      const message = this.rooms.message(room, guest, body);
+    return this.handle(socket, 'chat', 5, async ({ room, guest }) => {
+      const message = await this.rooms.message(room, guest, body);
       this.io.to(room.roomCode).emit('chat:message', message);
       return message;
     });

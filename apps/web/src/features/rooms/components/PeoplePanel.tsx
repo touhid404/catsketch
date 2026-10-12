@@ -1,6 +1,6 @@
 import { GuestAvatar } from '../../avatars/components/GuestAvatar';
 import { ArrowRight } from 'lucide-react';
-import type { Participant } from '@syncspace/shared';
+import type { Participant } from '@catsketch/shared';
 export default function PeoplePanel({
   participants,
   guestId,
@@ -15,7 +15,11 @@ export default function PeoplePanel({
       <div className="people-list">
         {participants.map((p) => (
           <div className="person-row" key={p.guestId}>
-            <GuestAvatar guestId={p.guestId} name={p.username} className="person-avatar" />
+            <GuestAvatar
+              guestId={p.avatarSeed ?? p.guestId}
+              name={p.username}
+              className="person-avatar"
+            />
             <div>
               <strong>{p.username}</strong>
               <span>{p.guestId === guestId ? 'You’re in the space' : 'Here to collaborate'}</span>

@@ -18,7 +18,7 @@ import {
   Video,
   X,
 } from 'lucide-react';
-import type { GuestSession } from '@syncspace/shared';
+import type { GuestSession } from '@catsketch/shared';
 import { GuestAvatar } from '../../avatars/components/GuestAvatar';
 import AudioCallPanel from '../../calls/components/AudioCallPanel';
 import PeoplePanel from '../components/PeoplePanel';
@@ -30,15 +30,21 @@ export default function Room({
   session,
   notify,
   onExpired,
+  account,
+  initialInvite = false,
+  onDeleted,
 }: {
+  initialInvite?: boolean;
+  onDeleted: () => void;
   session: GuestSession;
   notify: (message: string) => void;
   onExpired: () => void;
+  account?: import('@catsketch/shared').AccountSummary | null;
 }) {
-  const board = useCollaboration(session, notify, onExpired);
+  const board = useCollaboration(session, notify, onExpired, onDeleted);
   const [sidebar, setSidebar] = useState(() => window.innerWidth > 760);
   const [tab, setTab] = useState<'people' | 'chat'>('people');
-  const [invite, setInvite] = useState(false);
+  const [invite, setInvite] = useState(initialInvite);
   const [copied, setCopied] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const inviteInput = useRef<HTMLInputElement>(null);
@@ -54,9 +60,9 @@ export default function Room({
     previousCount.current = board.messages.length;
   }, [board.messages, tab, sidebar]);
   useEffect(() => {
-    document.title = `${room.title} — SyncSpace`;
+    document.title = `${room.title} — CatSketch`;
     return () => {
-      document.title = 'SyncSpace — Room for your next big idea';
+      document.title = 'CatSketch — Room for your next big idea';
     };
   }, [room.title]);
   useEffect(() => {
@@ -99,7 +105,7 @@ export default function Room({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${room.title.replace(/[^\w\s-]/g, '').trim() || 'syncspace'}.png`;
+      a.download = `${room.title.replace(/[^\w\s-]/g, '').trim() || 'catsketch'}.png`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       notify('Your whiteboard is ready to keep.');
@@ -124,9 +130,14 @@ export default function Room({
           </span>
         </div>
         <div className="workspace-actions">
+          {account && (
+            <a className="text-button workspace-dashboard-link" href="/dashboard">
+              Dashboard
+            </a>
+          )}
           <div className="participant-stack">
             {board.participants.slice(0, 3).map((p) => (
-              <GuestAvatar key={p.guestId} guestId={p.guestId} name={p.username} />
+              <GuestAvatar key={p.guestId} guestId={p.avatarSeed ?? p.guestId} name={p.username} />
             ))}
             {board.participants.length > 3 && (
               <span className="overflow-avatar">+{board.participants.length - 3}</span>
@@ -245,8 +256,10 @@ export default function Room({
           )}
           <div className="sidebar-footer">
             <span>
-              Space closes{' '}
-              {new Date(room.expiresAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+              {room.expiresAt
+                ? `Space closes ${new Date(room.expiresAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}`
+                : 'Saved space'}{' '}
+              · {room.maxParticipants ?? 'Unlimited'} people max
             </span>
             <button onClick={leave} disabled={leaving}>
               <LogOut size={14} /> {leaving ? 'Leaving…' : 'Leave space'}
@@ -317,7 +330,11 @@ export default function Room({
                 </>
               )}
             </button>
-            <div className="modal-footnote">This space is designed for a small team of 3–5.</div>
+            <div className="modal-footnote">
+              {room.maxParticipants
+                ? `Up to ${room.maxParticipants} people can join this space at once.`
+                : 'Bring your team into the conversation.'}
+            </div>
           </section>
         </div>
       )}

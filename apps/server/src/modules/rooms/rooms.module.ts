@@ -1,3 +1,4 @@
+import { AuthModule } from '../auth/auth.module';
 import { Module } from '@nestjs/common';
 import { PersistenceModule } from '../../infrastructure/persistence/persistence.module';
 import { GuestTokenService } from '../../common/security/guest-token.service';
@@ -5,7 +6,7 @@ import { RoomsService } from './rooms.service';
 import { RoomsController } from './rooms.controller';
 import { RoomsGateway } from './rooms.gateway';
 @Module({
-  imports: [PersistenceModule],
+  imports: [PersistenceModule, AuthModule],
   providers: [GuestTokenService, RoomsService, RoomsGateway],
   controllers: [RoomsController],
   exports: [RoomsService],
