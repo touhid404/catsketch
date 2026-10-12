@@ -14,9 +14,9 @@ export class KeepAliveService implements OnApplicationBootstrap, OnApplicationSh
 
   onApplicationBootstrap() {
     if (process.env.NODE_ENV !== 'production' || this.task) return;
-    const configured = process.env.PING_URL?.trim();
+    const configured = process.env.APP_URL?.trim() || process.env.WEB_ORIGIN?.split(',')[0]?.trim();
     if (!configured) {
-      this.logger.warn('PING_URL is not set. The production keep-alive cron is disabled.');
+      this.logger.warn('The website URL is not set. The production keep-alive cron is disabled.');
       return;
     }
     let url: URL;
@@ -24,8 +24,9 @@ export class KeepAliveService implements OnApplicationBootstrap, OnApplicationSh
       url = new URL(configured);
       if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password)
         throw new Error('Invalid ping URL');
+      url = new URL('/api/keep-alive', url);
     } catch {
-      throw new Error('PING_URL must be an HTTP or HTTPS URL without embedded credentials.');
+      throw new Error('The website URL must be an HTTP or HTTPS URL without embedded credentials.');
     }
     this.task = cron.schedule(
       '*/14 * * * *',

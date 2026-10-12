@@ -7,12 +7,14 @@ import { KeepAliveService } from '../apps/server/src/modules/keep-alive/keep-ali
 
 describe('production keep-alive cron', () => {
   const originalMode = process.env.NODE_ENV;
-  const originalUrl = process.env.PING_URL;
+  const originalUrl = process.env.APP_URL;
+  const originalOrigin = process.env.WEB_ORIGIN;
   let messages: string[];
   let errors: string[];
   beforeEach(() => {
     process.env.NODE_ENV = 'production';
-    delete process.env.PING_URL;
+    delete process.env.APP_URL;
+    delete process.env.WEB_ORIGIN;
     messages = [];
     errors = [];
     mock.method(Logger.prototype, 'log', (message: string) => messages.push(message));
@@ -26,19 +28,21 @@ describe('production keep-alive cron', () => {
     mock.restoreAll();
     if (originalMode === undefined) delete process.env.NODE_ENV;
     else process.env.NODE_ENV = originalMode;
-    if (originalUrl === undefined) delete process.env.PING_URL;
-    else process.env.PING_URL = originalUrl;
+    if (originalUrl === undefined) delete process.env.APP_URL;
+    else process.env.APP_URL = originalUrl;
+    if (originalOrigin === undefined) delete process.env.WEB_ORIGIN;
+    else process.env.WEB_ORIGIN = originalOrigin;
   });
   const scheduled = () =>
     [...cron.getTasks().values()].find((task) => task.name === 'catsketch-keep-alive');
 
   test('does not schedule in development or without a configured production URL', () => {
     process.env.NODE_ENV = 'development';
-    process.env.PING_URL = 'https://example.test/api/keep-alive';
+    process.env.APP_URL = 'https://example.test';
     new KeepAliveService().onApplicationBootstrap();
     assert.equal(scheduled(), undefined);
     process.env.NODE_ENV = 'production';
-    delete process.env.PING_URL;
+    delete process.env.APP_URL;
     new KeepAliveService().onApplicationBootstrap();
     assert.equal(scheduled(), undefined);
   });
@@ -54,7 +58,7 @@ describe('production keep-alive cron', () => {
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
-    process.env.PING_URL = `http://127.0.0.1:${address.port}/api/keep-alive`;
+    process.env.APP_URL = `http://127.0.0.1:${address.port}`;
     const service = new KeepAliveService();
     try {
       service.onApplicationBootstrap();
@@ -86,11 +90,30 @@ describe('production keep-alive cron', () => {
       'file:///tmp/example',
       'https://user:private-password@example.test/api/keep-alive',
     ]) {
-      process.env.PING_URL = url;
+      process.env.APP_URL = url;
       assert.throws(() => new KeepAliveService().onApplicationBootstrap(), {
-        message: 'PING_URL must be an HTTP or HTTPS URL without embedded credentials.',
+        message: 'The website URL must be an HTTP or HTTPS URL without embedded credentials.',
       });
     }
     assert.equal(scheduled(), undefined);
+  });
+
+  test('uses the existing web origin when APP_URL is absent', async () => {
+    process.env.WEB_ORIGIN = 'https://website.example.test,https://second.example.test';
+    const requested: string[] = [];
+    mock.method(globalThis, 'fetch', async (url: URL) => {
+      requested.push(url.toString());
+      return new Response('I am alive', { status: 200 });
+    });
+    const service = new KeepAliveService();
+    try {
+      service.onApplicationBootstrap();
+      const task = scheduled();
+      assert.ok(task);
+      await task.execute();
+      assert.deepEqual(requested, ['https://website.example.test/api/keep-alive']);
+    } finally {
+      await service.onApplicationShutdown();
+    }
   });
 });
